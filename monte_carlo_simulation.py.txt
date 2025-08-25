@@ -1,0 +1,52 @@
+import numpy as np
+import pandas as pd
+
+# تنظیمات اولیه
+np.random.seed(42)  # برای تکرارپذیری
+n_simulations = 10000  # تعداد شبیه‌سازی‌ها
+crystal_palace_elo = 1838  # Elo کریستال پالاس
+teams_elo = [2100, 2050, 2000, 1950, 1900, 1880, 1850, 1838, 1820, 1800, 1780, 1750, 1700, 1680, 1650, 1600]  # Elo تیم‌های فرضی
+
+# تابع محاسبه شانس برد
+def calculate_win_probability(elo_a, elo_b):
+    return 1 / (1 + 10 ** ((elo_b - elo_a) / 400))
+
+# شبیه‌سازی یک تورنمنت
+def simulate_tournament(teams_elo, palace_elo):
+    teams = teams_elo.copy()
+    np.random.shuffle(teams)  # قرعه تصادفی
+    rounds = ['Round of 16', 'Quarterfinals', 'Semifinals']
+    current_teams = teams[:16]  # ۱۶ تیم در مرحله حذفی
+    palace_alive = True if palace_elo in current_teams else False
+    reached_semifinals = False
+    
+    for round_name in rounds:
+        if not palace_alive:
+            break
+        next_round_teams = []
+        for i in range(0, len(current_teams), 2):
+            team1_elo = current_teams[i]
+            team2_elo = current_teams[i+1] if i+1 < len(current_teams) else None
+            if team2_elo is None:
+                next_round_teams.append(team1_elo)
+                continue
+            prob_team1_wins = calculate_win_probability(team1_elo, team2_elo)
+            winner = team1_elo if np.random.random() < prob_team1_wins else team2_elo
+            next_round_teams.append(winner)
+            if round_name == 'Semifinals' and winner == palace_elo:
+                reached_semifinals = True
+            if team1_elo == palace_elo or team2_elo == palace_elo:
+                palace_alive = winner == palace_elo
+        current_teams = next_round_teams
+    
+    return reached_semifinals
+
+# اجرای شبیه‌سازی‌ها
+semifinals_count = 0
+for _ in range(n_simulations):
+    if simulate_tournament(teams_elo, crystal_palace_elo):
+        semifinals_count += 1
+
+# محاسبه احتمال
+probability = (semifinals_count / n_simulations) * 100
+print(f"Probability of Crystal Palace reaching semifinals: {probability:.2f}%")
